@@ -3,6 +3,10 @@ import pandas as pd
 
 def get_data(interval):
     df = yf.download("CL=F", period="1d", interval=interval)
+
+    # 🔥 FIX: pulizia dati
+    df = df.dropna()
+
     return df
 
 def calculate_indicators(df):
@@ -19,28 +23,38 @@ def calculate_indicators(df):
     return df
 
 def generate_signal(df):
+    if df is None or df.empty:
+        return [], None
+
+    # 🔥 FIX: prendi valori veri (float)
     last = df.iloc[-1]
+
+    ema20 = float(last["EMA20"])
+    ema50 = float(last["EMA50"])
+    rsi = float(last["RSI"])
+    price = float(last["Close"])
+
     signals = []
 
     # STRONG
-    if last["EMA20"] > last["EMA50"] and last["RSI"] < 65:
+    if ema20 > ema50 and rsi < 65:
         signals.append(("BUY", "STRONG"))
 
-    if last["EMA20"] < last["EMA50"] and last["RSI"] > 35:
+    if ema20 < ema50 and rsi > 35:
         signals.append(("SELL", "STRONG"))
 
     # SCALP
-    if last["RSI"] < 30:
+    if rsi < 30:
         signals.append(("BUY", "SCALP"))
 
-    if last["RSI"] > 70:
+    if rsi > 70:
         signals.append(("SELL", "SCALP"))
 
     # INTRADAY
-    if 40 < last["RSI"] < 60:
-        if last["EMA20"] > last["EMA50"]:
+    if 40 < rsi < 60:
+        if ema20 > ema50:
             signals.append(("BUY", "INTRADAY"))
-        elif last["EMA20"] < last["EMA50"]:
+        elif ema20 < ema50:
             signals.append(("SELL", "INTRADAY"))
 
-    return signals, last["Close"]
+    return signals, price
