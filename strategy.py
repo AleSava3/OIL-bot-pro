@@ -7,13 +7,10 @@ def get_data(interval):
     if df is None or df.empty:
         return None
 
-    # 🔥 FIX CRUCIALE: appiattisce colonne multi-index
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
 
-    # tieni solo colonne base
     df = df[["Open", "High", "Low", "Close", "Volume"]]
-
     df = df.dropna()
 
     return df
@@ -33,42 +30,58 @@ def calculate_indicators(df):
     return df
 
 
-def generate_signal(df):
+# 🔥 DIREZIONE M15
+def get_trend(df):
     if df is None or df.empty:
-        return [], None
+        return None
 
     last = df.iloc[-1]
 
     try:
-        # 🔥 FORZA VALORI NUMERICI REALI
         ema20 = float(last["EMA20"])
         ema50 = float(last["EMA50"])
+    except:
+        return None
+
+    if ema20 > ema50:
+        return "BUY"
+    elif ema20 < ema50:
+        return "SELL"
+
+    return None
+
+
+# 🎯 ENTRY M5 SNIPER
+def generate_entry(df, trend):
+    if df is None or df.empty or len(df) < 3:
+        return None, None, None
+
+    last = df.iloc[-1]
+    prev = df.iloc[-2]
+
+    try:
         rsi = float(last["RSI"])
         price = float(last["Close"])
+        prev_close = float(prev["Close"])
     except:
-        return [], None
+        return None, None, None
 
-    signals = []
+    # volatilità minima
+    if abs(price - prev_close) < 0.1:
+        return None, None, None
 
-    # STRONG
-    if ema20 > ema50 and rsi < 65:
-        signals.append(("BUY", "STRONG"))
+    # 🔥 breakout reale
+    if trend == "BUY" and price > prev_close and 50 < rsi < 70:
+        return "BUY", price, "SNIPER_TREND"
 
-    if ema20 < ema50 and rsi > 35:
-        signals.append(("SELL", "STRONG"))
+    if trend == "SELL" and price < prev_close and 30 < rsi < 50:
+        return "SELL", price, "SNIPER_TREND"
 
-    # SCALP
-    if rsi < 30:
-        signals.append(("BUY", "SCALP"))
+    # ⚡ reversal forte
+    if rsi < 25:
+        return "BUY", price, "REVERSAL"
 
-    if rsi > 70:
-        signals.append(("SELL", "SCALP"))
+    if rsi > 75:
+        return "SELL", price, "REVERSAL"
 
-    # INTRADAY
-    if 40 < rsi < 60:
-        if ema20 > ema50:
-            signals.append(("BUY", "INTRADAY"))
-        elif ema20 < ema50:
-            signals.append(("SELL", "INTRADAY"))
-
-    return signals, price
+    return None, None, None
