@@ -4,10 +4,20 @@ import pandas as pd
 def get_data(interval):
     df = yf.download("CL=F", period="1d", interval=interval)
 
-    # 🔥 FIX: pulizia dati
+    if df is None or df.empty:
+        return None
+
+    # 🔥 FIX CRUCIALE: appiattisce colonne multi-index
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.get_level_values(0)
+
+    # tieni solo colonne base
+    df = df[["Open", "High", "Low", "Close", "Volume"]]
+
     df = df.dropna()
 
     return df
+
 
 def calculate_indicators(df):
     df["EMA20"] = df["Close"].ewm(span=20).mean()
@@ -22,17 +32,21 @@ def calculate_indicators(df):
 
     return df
 
+
 def generate_signal(df):
     if df is None or df.empty:
         return [], None
 
-    # 🔥 FIX: prendi valori veri (float)
     last = df.iloc[-1]
 
-    ema20 = float(last["EMA20"])
-    ema50 = float(last["EMA50"])
-    rsi = float(last["RSI"])
-    price = float(last["Close"])
+    try:
+        # 🔥 FORZA VALORI NUMERICI REALI
+        ema20 = float(last["EMA20"])
+        ema50 = float(last["EMA50"])
+        rsi = float(last["RSI"])
+        price = float(last["Close"])
+    except:
+        return [], None
 
     signals = []
 
