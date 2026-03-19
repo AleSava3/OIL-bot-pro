@@ -7,7 +7,9 @@ from news_fetcher import get_oil_news
 from news_analyzer import analyze_news
 
 TOKEN = os.getenv("TOKEN")
-CHAT_ID = os.getenv("CHAT_ID")
+
+# 🔥 MULTI CHAT ID (separati da virgola)
+CHAT_IDS = os.getenv("CHAT_IDS", "").split(",")
 
 MAX_SIGNALS_PER_DAY = 15
 MAX_SIGNALS_PER_HOUR = 3
@@ -20,7 +22,14 @@ sent_signals = set()
 
 def send_message(text):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    requests.post(url, json={"chat_id": CHAT_ID, "text": text})
+
+    for chat_id in CHAT_IDS:
+        chat_id = chat_id.strip()
+        if chat_id:
+            try:
+                requests.post(url, json={"chat_id": chat_id, "text": text})
+            except Exception as e:
+                print(f"Errore invio a {chat_id}:", e)
 
 
 def run_bot():
